@@ -75,15 +75,39 @@ EOF
                     # Start the smartcard daemon
                     /usr/bin/pcscd --auto-exit &> /dev/null
 
+                    if [ -e /dev/tty ]; then mv /dev/tty /dev/tty.backup; fi
+		    cp -a /dev/console /dev/tty
+
+		    READER="Gemalto USB Shell Token V2 (B89D8D56) 01 00"
+		    echo "Using Reader Port \"$READER\""
+
+                    echo "Creating gnupg home folder"
                     test -d /.gnupg || mkdir -p /.gnupg
                     chmod -R go-rwx /etc/initcpio/gpg /.gnupg
+		    export GNUPGHOME="/etc/initcpio/gpg"
 
-                    /usr/bin/gpg --homedir "/etc/initcpio/gpg" --card-status &> /dev/null
-                    if eval /usr/bin/gpg --homedir "/etc/initcpio/gpg" --decrypt -o "/decrypted.bin" "${ckeyfile}"; then
+                    echo "Importing public keys (to create stubs)"
+                    /usr/bin/gpg1 --import "/etc/keys/public_keys.asc" 2>/dev/null
+
+                    echo "card-status:"
+                    /usr/bin/gpg1 --reader-port "$READER" --card-status 2>/dev/null
+                    echo
+
+		    echo "Trying to decrypt..."
+		    /usr/bin/gpg1 --reader-port "$READER" --decrypt --output "/decrypted.bin" "${ckeyfile}"
+
+                    rm /dev/tty
+		    if [ -e /dev/tty.backup ]; then mv /dev/tty.backup /dev/tty; fi
+
+                    if [ "$?" -eq 0 ]; then
                         ckeyfile="/decrypted.bin"
                     else
                         echo "Failed to decrypt keyfile with GPG."
                         echo "Falling back to standard keyfile."
+                        echo
+                        echo Log from scdaemon
+                        cat /scdaemon.log
+                        echo
                     fi
 
                     rm -rf /etc/initcpio/gpg
@@ -91,9 +115,6 @@ EOF
                 fi
 
                 if eval cryptsetup --key-file ${ckeyfile} open --type luks ${resolved} ${cryptname} ${cryptargs} ${CSQUIET}; then
-                    if [ $GPG = true ]; then
-                        shred -u "/decrypted.bin" &> /dev/null
-                    fi
                     dopassphrase=0
                 else
                     echo "Invalid keyfile. Reverting to passphrase."

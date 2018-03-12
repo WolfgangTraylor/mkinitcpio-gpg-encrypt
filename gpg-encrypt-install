@@ -21,18 +21,29 @@ build() {
     chmod 0700 "${BUILDROOT}/etc/initcpio/gpg"
     echo "pinentry-program /usr/bin/pinentry-tty" > "${BUILDROOT}/etc/initcpio/gpg/gpg-agent.conf"
 
+    # DEBUG:
+    echo "log-file /scdaemon.log" > ${BUILDROOT}/etc/initcpio/gpg/scdaemon.conf
+    echo "verbose" >> ${BUILDROOT}/etc/initcpio/gpg/scdaemon.conf
+    #echo "reader-port \"Broadcom Corp 5880 [Contacted SmartCard] (0123456789ABCD) 00 00\"" >> ${BUILDROOT}/etc/initcpio/gpg/scdaemon.conf
+
+    add_file "/etc/keys/luks_key.gpg"
+    add_file "/etc/keys/public_keys.asc"
     add_binary "cryptsetup"
     add_binary "dmsetup"
-    add_binary "gpg"
-    add_binary "gpg-agent"
-    add_binary "pinentry-tty"
     add_binary "pcscd"
-    add_binary "/usr/lib/gnupg/scdaemon"
-    add_binary "shred"
-    add_file "/usr/lib/udev/rules.d/10-dm.rules"
-    add_file "/usr/lib/udev/rules.d/13-dm-disk.rules"
-    add_file "/usr/lib/udev/rules.d/95-dm-notify.rules"
-    add_file "/usr/lib/initcpio/udev/11-dm-initramfs.rules" "/usr/lib/udev/rules.d/11-dm-initramfs.rules"
+    add_binary "python"
+    add_binary "pinentry-tty"
+
+    add_binary "/etc/keys/gnupg-1.4/g10/gpg" "/usr/bin/gpg1"
+
+    # Add all files from selected packages. The "grep" command selects the second column 
+    for item in $(pacman --query --list ccid pcsclite libusb libbksba    libusb-compat flex | grep --only-matching ' .*$' ); do
+	    if [ -f "$item" ]; then
+		    echo "adding file $item"
+		    add_file "$item"
+	    fi
+    done
+    #(pacman --query --list bzip2 libgcrypt libgpg-error pinentry libbksba npth readline sqlite libsecret libcap libassuan | grep --only-matching ' .*$' ); do
 
     if [ -f /etc/private.gpg ]; then
         if ! gpg --homedir "${BUILDROOT}/etc/initcpio/gpg" --import /etc/private.gpg &> /dev/null; then
