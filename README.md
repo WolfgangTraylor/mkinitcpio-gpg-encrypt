@@ -18,6 +18,28 @@ Use this hook at your own risk. It's highly recommended to have a backup key som
 
 # Configuration process
 
+This fork uses GnuPG 1.4 because it didn’t work with GnuPG 2.x.
+```bash
+mkdir /etc/keys
+dd if=/dev/random bs=1 count=256 of=/etc/keys/luks_key
+gpg --recipient FINGERPRINT1 --recipient FINGERPRINT2 --encrypt --output /etc/keys/luks_key.gpg /etc/keys/luks_key 
+# Enter a long diceware password.
+cryptsetup luksAddKey /dev/sda3 /etc/keys/luks_key
+# Check, there should be two slots:
+cryptsetup luksDump /dev/sda3 
+rm /etc/keys/luks_key
+
+# Export the public stub keys (repeat this after keys have expired).
+gpg --export --export-options export-minimal --armor --output /etc/keys/public_key.asc FINGERPRINT1 FINGERPRINT2
+
+# Check that you have the following packages installed:
+# python pcsclite pinentry libusb libbksba libusb-compat flex grep
+
+git clone https://github.com/gpg/gnupg.git --branch 'STABLE-BRANCH-1-4' --depth 1 /etc/keys/gnupg-1.4
+cd /etc/keys/gnupg-1.4/
+make
+```
+
 1. Install Arch onto a LUKS encrypted system and get it booting using the stock `encrypt` hook and keyfile.
 1. Encrypt your keyfile with GnuPG: `gpg -r YOURKEYID -o keyfile.gpg --encrypt keyfile`.
 1. Delete/Backup/Watever your original keyfile.

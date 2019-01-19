@@ -24,6 +24,9 @@ build() {
     # DEBUG:
     echo "log-file /scdaemon.log" > ${BUILDROOT}/etc/initcpio/gpg/scdaemon.conf
     echo "verbose" >> ${BUILDROOT}/etc/initcpio/gpg/scdaemon.conf
+
+    # You can adjust the reader port to your specific smartcard reader.
+    # Find out the reader port by running `pcsc_scan` (needs the package "pcsc-tools").
     #echo "reader-port \"Broadcom Corp 5880 [Contacted SmartCard] (0123456789ABCD) 00 00\"" >> ${BUILDROOT}/etc/initcpio/gpg/scdaemon.conf
 
     add_file "/etc/keys/luks_key.gpg"
@@ -43,7 +46,6 @@ build() {
 		    add_file "$item"
 	    fi
     done
-    #(pacman --query --list bzip2 libgcrypt libgpg-error pinentry libbksba npth readline sqlite libsecret libcap libassuan | grep --only-matching ' .*$' ); do
 
     if [ -f /etc/private.gpg ]; then
         if ! gpg --homedir "${BUILDROOT}/etc/initcpio/gpg" --import /etc/private.gpg &> /dev/null; then
